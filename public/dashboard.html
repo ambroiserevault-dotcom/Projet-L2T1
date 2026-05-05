@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tableau de bord professeur</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="page-dashboard">
+  <div class="container dashboard-card">
+    <h1>Tableau de bord</h1>
+    <p class="subtitle">Bienvenue sur votre espace professeur connecté.</p>
+
+    <div class="admin-summary" id="adminSummary"></div>
+
+    <div class="dashboard-actions">
+      <button class="btn primary" onclick="createRoom()">Créer une nouvelle salle</button>
+      <button class="btn secondary" onclick="logoutAdmin()">Se déconnecter</button>
+    </div>
+
+    <div class="room-history" id="roomHistory">
+      <h2>Historique des salles</h2>
+      <div id="roomList" class="room-list">
+        <p class="loading">Chargement de l'historique...</p>
+      </div>
+    </div>
+
+    <div class="dashboard-help">
+      <p>Une fois votre salle créée, vous recevrez un code à partager avec vos étudiants.</p>
+    </div>
+  </div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

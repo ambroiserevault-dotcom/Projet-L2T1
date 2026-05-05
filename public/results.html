@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Résultats de la salle</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body class="page-results">
+
+<h1>Résultats de la salle</h1>
+
+<div class="status">Chargement des résultats...</div>
+
+<div id="results"></div>
+
+<div class="results-actions">
+  <button id="finalCloseBtn" class="btn primary">Fermer définitivement la salle</button>
+  <button id="backToDashboardBtn" class="btn secondary" onclick="window.location.href='dashboard.html'">Retour au tableau de bord</button>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const room = params.get("room");
+const isHistorical = params.get("historical") === "true";
+const socket = io();
+
+if (!room) {
+  document.querySelector(".status").innerText = "Aucune salle fournie";
+}
+
+function buildBarChart(title, categories, values) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "chart";
+  const titleNode = document.createElement("h2");
+  titleNode.innerText = title;
+  wrapper.appendChild(titleNode);
+
+  categories.forEach(category => {
+    const row = document.createElement("div");
+    row.className = "bar-row";
+
+    const label = document.createElement("span");
+    label.innerText = category;
+    row.appendChild(label);
+
+    const track = document.createElement("div");
+    track.className = "bar-track";
+
+    const fillLeft = document.createElement("div");
+    fillLeft.className = "bar-fill bar-fill-left";
+    const fillRight = document.createElement("div");
+    fillRight.className = "bar-fill bar-fill-right";
+
+    const value = values[category];
+    const absoluteValue = value === null || value === undefined ? 0 : Math.min(2, Math.max(-2, value));
+    const fillRatio = absoluteValue === 0 ? 0 : (Math.abs(absoluteValue) / 2) * 50;
+
+    if (absoluteValue < 0) {
+      fillLeft.style.width = `${fillRatio}%`;
+    } else {
+      fillRight.style.width = `${fillRatio}%`;
+    }
+
+    track.appendChild(fillLeft);
+    track.appendChild(fillRight);
+    row.appendChild(track);
+
+    const valueLabel = document.createElement("span");
+    valueLabel.className = "bar-value";
+    valueLabel.innerText = value === null || value === undefined ? "N/A" : value.toFixed(2);
+    row.appendChild(valueLabel);
+
+    wrapper.appendChild(row);
+  });
+
+  return wrapper;
+}
+
+if (isHistorical) {
+  const historicalData = sessionStorage.getItem('historicalResults');
+  if (historicalData) {
+    const data = JSON.parse(historicalData);
+    // Simulate the socket.on("results") event
+    const container = document.getElementById("results");
+    const status = document.querySelector(".status");
+    container.innerHTML = "";
+    status.innerText = "Résultats historiques";
+
+    const categories = data.categories || Object.keys(data.overall || {});
+    const overall = data.overall || {};
+    const users = data.users || {};
+
+    container.appendChild(buildBarChart("Vue globale des émotions", categories, overall));
+
+    const usersTitle = document.createElement("h2");
+    usersTitle.innerText = "Résultats par participant";
+    container.appendChild(usersTitle);
+
+    for (const userId in users) {
+      const card = document.createElement("div");
+      card.className = "user-card";
+      const header = document.createElement("h3");
+      header.innerText = `👤 ${userId}`;
+      card.appendChild(header);
+
+      const userData = users[userId];
+      const profile = userData.profile || {};
+      const profileName = [profile.firstName, profile.lastName].filter(Boolean).join(" ");
+      const info = document.createElement("div");
+      info.className = "user-info";
+
+      if (profileName) {
+        const nameLine = document.createElement("p");
+        nameLine.innerText = `Nom : ${profileName}`;
+        info.appendChild(nameLine);
+      }
+
+      if (profile.email) {
+        const emailLine = document.createElement("p");
+        emailLine.innerText = `Email : ${profile.email}`;
+        info.appendChild(emailLine);
+      }
+
+      if (info.childElementCount > 0) {
+        const profileTitle = document.createElement("p");
+        profileTitle.className = "user-profile-title";
+        profileTitle.innerText = "Informations saisies";
+        card.appendChild(profileTitle);
+        card.appendChild(info);
+      }
+
+      if (userData.scores) {
+        const scores = userData.scores || {};
+        card.appendChild(buildBarChart("Profil émotionnel", categories, scores));
+      }
+
+      container.appendChild(card);
+    }
+
+    // Hide the final close button for historical results
+    document.getElementById("finalCloseBtn").style.display = "none";
+    document.getElementById("backToDashboardBtn").style.display = "block";
+  } else {
+    document.querySelector(".status").innerText = "Résultats historiques non trouvés";
+  }
+} else {
+  socket.emit("getResults", room);
+}
+
+socket.on("results", (data) => {
+  const container = document.getElementById("results");
+  const status = document.querySelector(".status");
+  container.innerHTML = "";
+  status.innerText = "Résultats finaux";
+
+  const categories = data.categories || Object.keys(data.overall || {});
+  const overall = data.overall || {};
+  const users = data.users || {};
+
+  container.appendChild(buildBarChart("Vue globale des émotions", categories, overall));
+
+  const usersTitle = document.createElement("h2");
+  usersTitle.innerText = "Résultats par participant";
+  container.appendChild(usersTitle);
+
+  for (const userId in users) {
+    const card = document.createElement("div");
+    card.className = "user-card";
+    const header = document.createElement("h3");
+    header.innerText = `👤 ${userId}`;
+    card.appendChild(header);
+
+    const userData = users[userId];
+    const profile = userData.profile || {};
+    const profileName = [profile.firstName, profile.lastName].filter(Boolean).join(" ");
+    const info = document.createElement("div");
+    info.className = "user-info";
+
+    if (profileName) {
+      const nameLine = document.createElement("p");
+      nameLine.innerText = `Nom : ${profileName}`;
+      info.appendChild(nameLine);
+    }
+
+    if (profile.email) {
+      const emailLine = document.createElement("p");
+      emailLine.innerText = `Email : ${profile.email}`;
+      info.appendChild(emailLine);
+    }
+
+    if (info.childElementCount > 0) {
+      const profileTitle = document.createElement("p");
+      profileTitle.className = "user-profile-title";
+      profileTitle.innerText = "Informations saisies";
+      card.appendChild(profileTitle);
+      card.appendChild(info);
+    }
+
+    if (userData.scores) {
+      const scores = userData.scores || {};
+      card.appendChild(buildBarChart("Profil émotionnel", categories, scores));
+    }
+
+    container.appendChild(card);
+  }
+});
+
+document.getElementById("finalCloseBtn").onclick = () => {
+  socket.emit("deleteRoom", room);
+  window.location.href = "index.html";
+};
+</script>
+
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr" class="page-secondary">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Participation à la salle</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="page-secondary">
+
+  <main class="secondary-card">
+    <header>
+      <h1>Salle en activité</h1>
+    </header>
+
+    <section class="quiz-header">
+      <h3>Salle : <span id="roomDisplay"></span></h3>
+      <h3>Votre identifiant : <span id="userId"></span></h3>
+    </section>
+
+    <div id="quiz"></div>
+    <!-- WEBCAM FOR EMOTION DETECTION -->
+    <div id="videoBox" class="hidden" style="margin-top: 20px;">
+      <video id="video" autoplay muted style="max-width: 200px; border-radius: 8px;"></video>
+      <div id="emotionDisplay" style="margin-top: 10px; font-size: 14px;">
+        <p id="emotionIndicator" style="color: #999;">🔴 Détection d'émotions en cours</p>
+        <p id="currentEmotion" style="font-weight: bold; color: #7a0026;"></p>
+        <p id="ageDisplay" style="color: #666;"></p>
+      </div>
+    </div>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script defer src="script.js"></script>
+
+</body>
+</html>
