@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tableau de bord — Salle</title>
+  <link rel="stylesheet" href="salle.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <div class="header-left">
+        <h1>Emotion Monitoring Platform</h1>
+        <p id="nomSalleHeader">Chargement…</p>
+      </div>
+      <div class="header-right">
+        <div class="code-badge">
+          <span class="code-label">Code de la salle</span>
+          <span class="code-value" id="codeAffiche">——</span>
+          <button class="btn-copy-code" onclick="copierCode()" title="Copier">📋</button>
+        </div>
+        <div class="statut-live">
+          <span class="dot-live" id="dotLive"></span>
+          <span id="liveStatusText">En attente</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="card">
+
+      <!-- Participants -->
+      <h2 class="section-title">
+        Participants connectés
+        <span class="badge-count" id="nbParticipants">0</span>
+      </h2>
+      <div id="listeParticipants" class="liste-participants">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon">👥</div>
+          <p>En attente des participants…</p>
+          <small>Partagez le code de la salle pour qu'ils puissent rejoindre.</small>
+        </div>
+      </div>
+
+      <!-- Graphiques émotions en temps réel -->
+      <div id="emotionDashboard" class="emotion-dashboard hidden">
+        <h2 class="section-title">📊 Émotions en temps réel</h2>
+
+        <div class="charts-grid">
+          <div class="chart-card">
+            <h3>Répartition actuelle</h3>
+            <div class="chart-wrapper">
+              <canvas id="emotionPieChart"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <h3>Évolution dans le temps</h3>
+            <div class="chart-wrapper">
+              <canvas id="emotionLineChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Barres textuelles -->
+        <div class="emotion-board">
+          <h3>Détail par émotion</h3>
+          <div id="emotionRows" class="emotion-rows"></div>
+        </div>
+
+        <!-- Par participant -->
+        <div class="participants-emotions">
+          <h3>Émotion dominante par participant</h3>
+          <div id="participantsEmotionsList" class="participants-list"></div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <!-- KPIs -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <span class="kpi-label">Participants</span>
+          <span class="kpi-value" id="kpiParticipants">0</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Questionnaires validés</span>
+          <span class="kpi-value" id="kpiQuestionnaires">0</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Avec webcam</span>
+          <span class="kpi-value" id="kpiWebcam">0</span>
+        </div>
+        <div class="kpi-card kpi-card-accent">
+          <span class="kpi-label">Sans webcam</span>
+          <span class="kpi-value" id="kpiNoWebcam">0</span>
+        </div>
+      </div>
+
+      <!-- Progression questionnaires -->
+      <div class="progress-block">
+        <div class="progress-head">
+          <span>Progression des questionnaires</span>
+          <strong id="progressLabel">0%</strong>
+        </div>
+        <div class="progress-track">
+          <div class="progress-bar" id="progressBar" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="actions-row">
+        <button class="btn-action btn-primary" onclick="sendQuestions()">
+          📨 Envoyer les questions
+        </button>
+        <button class="btn-action btn-primary" onclick="viewResults()">
+          📊 Voir les résultats
+        </button>
+        <button class="btn-action btn-secondary" onclick="window.location.href='dashboard.html'">
+          ← Tableau de bord
+        </button>
+      </div>
+      <p class="hint-lancer" id="hintLancer"></p>
+
+    </div>
+  </main>
+
+  <footer>
+    <p>🔒 Consentement explicite • Webcam optionnelle • Données anonymisées</p>
+    <p>© 2026 — Projet L2T1 — Université Paris Cité</p>
+  </footer>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="salle.js"></script>
+</body>
+</html>

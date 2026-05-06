@@ -22,6 +22,45 @@ const pythonProcesses = {}; // Map de socketId -> pythonProcess
 // Utilitaires
 // ─────────────────────────────────────────
 
+// Snapshot léger d'une salle pour le tableau de bord admin (salle.html)
+function buildRoomSnapshot(roomCode) {
+  const r = rooms[roomCode];
+  if (!r) return null;
+
+  const players = r.players.map((p) => {
+    const ans = r.answers[p.userId] || {};
+    return {
+      userId:         p.userId,
+      profile:        ans.profile        || {},
+      useWebcam:      p.useWebcam        || false,
+      emotionStats:   ans.emotions       || {},
+      dominantEmotion: ans.dominantEmotion || "neutral",
+      sessionCount:   (ans.sessions || []).length
+    };
+  });
+
+  // Agrégat des émotions de tous les participants
+  const overallEmotions = {};
+  for (const uid in r.answers) {
+    for (const [e, c] of Object.entries(r.answers[uid].emotions || {})) {
+      overallEmotions[e] = (overallEmotions[e] || 0) + Number(c || 0);
+    }
+  }
+
+  const totalAnswered = Object.values(r.answers)
+    .filter((u) => u.sessions && u.sessions.length > 0).length;
+
+  return {
+    room:             roomCode,
+    players,
+    overallEmotions,
+    totalParticipants: Object.keys(r.answers).length,
+    totalAnswered,
+    createdAt:        r.createdAt,
+    adminEmail:       r.adminEmail
+  };
+}
+
 function generateUserId(room) {
   const id = "I" + String(rooms[room].userCounter).padStart(4, "0");
   rooms[room].userCounter++;
@@ -178,6 +217,13 @@ io.on("connection", (socket) => {
     callback({ success: true, user: { email: account.email, firstName: account.firstName, lastName: account.lastName } });
   });
 
+  // ── Surveiller une salle (admin → salle.html) ───────────────────
+  socket.on("watchRoom", ({ room }) => {
+    if (!rooms[room]) { socket.emit("errorRoom"); return; }
+    socket.join(room);
+    socket.emit("roomUpdate", buildRoomSnapshot(room));
+  });
+
   // ── Rejoindre une salle ──────────────────
   socket.on("joinRoom", (data) => {
     const room = data.room;
@@ -240,6 +286,9 @@ io.on("connection", (socket) => {
     if (rooms[room].closed) {
       socket.emit("roomClosed", { room, results: rooms[room].finalResults });
     }
+
+    // Notifier le tableau de bord admin
+    io.to(room).emit("roomUpdate", buildRoomSnapshot(room));
   });
 
   // ── Envoyer les questions (admin) ────────
@@ -270,6 +319,7 @@ io.on("connection", (socket) => {
     });
 
     console.log("Room:", room, "| User:", userId, "| Réponses stockées");
+    io.to(room).emit("roomUpdate", buildRoomSnapshot(room));
   });
 
   // ── Rapport d'émotions cumulées (face-api côté client) ──────────
@@ -279,6 +329,8 @@ io.on("connection", (socket) => {
 
     rooms[room].answers[userId].emotions        = emotionStats    || {};
     rooms[room].answers[userId].dominantEmotion = dominantEmotion || "neutral";
+
+    io.to(room).emit("roomUpdate", buildRoomSnapshot(room));
   });
 
   // ── Recevoir un frame webcam ─────────────
@@ -479,6 +531,7 @@ io.on("connection", (socket) => {
           delete pythonProcesses[socket.id];
         }
         room.players.splice(playerIndex, 1);
+        io.to(roomCode).emit("roomUpdate", buildRoomSnapshot(roomCode));
         break;
       }
     }
