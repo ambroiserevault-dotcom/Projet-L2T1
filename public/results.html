@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Résultats de la salle</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  /* ── Reset & base ───────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body.page-results {
+    font-family: "Segoe UI", sans-serif;
+    background: #f7f8fb;
+    color: #1e1e2f;
+    min-height: 100vh;
+  }
+
+  /* ── Wrapper ────────────────────────────────────────────────── */
+  .results-wrapper {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 32px 20px 60px;
+  }
+
+  /* ── Page header ────────────────────────────────────────────── */
+  .results-header {
+    margin-bottom: 32px;
+  }
+  .results-header h1 {
+    font-size: 1.9rem;
+    color: #7a0026;
+    margin-bottom: 6px;
+  }
+  .results-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .room-badge {
+    background: #7a0026;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 999px;
+    letter-spacing: .5px;
+  }
+  .status-badge {
+    font-size: 13px;
+    color: #555;
+    background: #e8e8f0;
+    padding: 4px 12px;
+    border-radius: 999px;
+  }
+
+  /* ── Cards ──────────────────────────────────────────────────── */
+  .result-card {
+    background: #fff;
+    border-radius: 18px;
+    padding: 28px;
+    box-shadow: 0 8px 28px rgba(0,0,0,.07);
+    margin-bottom: 24px;
+  }
+
+  .card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #7a0026;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f0f0f5;
+  }
+
+  /* ── Global overview: two panels side by side ───────────────── */
+  .overview-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 620px) {
+    .overview-grid { grid-template-columns: 1fr; }
+  }
+
+  .panel-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: #888;
+    margin-bottom: 14px;
+  }
+
+  /* ── Questionnaire bars (bidirectionnel -2/+2) ──────────────── */
+  .q-bar-row {
+    display: grid;
+    grid-template-columns: 120px 1fr 46px;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 13px;
+  }
+  .q-bar-label { color: #444; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .q-bar-track {
+    position: relative;
+    background: #edf0f7;
+    height: 12px;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .q-bar-track::after {
+    content: "";
+    position: absolute;
+    left: 50%; top: 0; bottom: 0;
+    width: 2px;
+    background: rgba(0,0,0,.12);
+  }
+  .q-bar-fill {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 0;
+  }
+  .q-bar-neg { right: 50%; background: linear-gradient(90deg, #ff9e9e, #f76b6b); border-radius: 999px 0 0 999px; }
+  .q-bar-pos { left:  50%; background: linear-gradient(90deg, #4d9cff, #1c6df6); border-radius: 0 999px 999px 0; }
+  .q-bar-value { text-align: right; font-weight: 600; color: #333; font-size: 12px; }
+
+  /* ── Emotion bars ───────────────────────────────────────────── */
+  .emo-bar-row {
+    display: grid;
+    grid-template-columns: 110px 1fr 40px;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .emo-bar-label { color: #444; }
+  .emo-bar-track {
+    height: 12px;
+    border-radius: 999px;
+    background: #edf0f7;
+    overflow: hidden;
+  }
+  .emo-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width .4s ease;
+  }
+  .emo-bar-pct { text-align: right; font-weight: 600; color: #555; font-size: 12px; }
+
+  /* ── Dominant emotion pill ──────────────────────────────────── */
+  .dominant-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 14px;
+    padding: 5px 14px;
+    border-radius: 999px;
+    background: #f6eaf5;
+    border: 1px solid rgba(122,0,38,.15);
+    font-size: 13px;
+    font-weight: 600;
+    color: #7a0026;
+  }
+  .dominant-pill span { font-size: 11px; font-weight: 400; color: #888; }
+
+  /* ── No data placeholder ────────────────────────────────────── */
+  .no-data {
+    font-size: 13px;
+    color: #aaa;
+    font-style: italic;
+    padding: 8px 0;
+  }
+
+  /* ── Section label (between groups of cards) ────────────────── */
+  .section-label {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1e1e2f;
+    margin: 32px 0 16px;
+  }
+
+  /* ── User card header ───────────────────────────────────────── */
+  .user-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f0f0f5;
+  }
+  .user-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #7a0026, #c1003a);
+    color: #fff;
+    font-weight: 700;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .user-name { font-weight: 700; font-size: 1rem; color: #1e1e2f; }
+  .user-email { font-size: 12px; color: #888; margin-top: 2px; }
+  .user-id { font-size: 11px; color: #bbb; margin-top: 2px; font-family: monospace; }
+
+  /* ── Per-user data grid ─────────────────────────────────────── */
+  .user-data-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  @media (max-width: 620px) {
+    .user-data-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── Action buttons ─────────────────────────────────────────── */
+  .results-actions {
+    margin-top: 36px;
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 13px 22px;
+    border-radius: 14px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: "Segoe UI", sans-serif;
+    text-decoration: none;
+    transition: background .15s ease, transform .1s ease;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn.primary   { background: #7a0026; color: #fff; }
+  .btn.primary:hover { background: #5f001d; }
+  .btn.secondary { background: #ebebf2; color: #1e1e2f; }
+  .btn.secondary:hover { background: #dcdce8; }
+</style>
+</head>
+
+<body class="page-results">
+<div class="results-wrapper">
+
+  <!-- Page header -->
+  <div class="results-header">
+    <h1>Résultats de la salle</h1>
+    <div class="results-meta">
+      <span class="room-badge" id="roomBadge">—</span>
+      <span class="status-badge" id="statusBadge">Chargement…</span>
+    </div>
+  </div>
+
+  <!-- Results injected here -->
+  <div id="results"></div>
+
+  <!-- Actions -->
+  <div class="results-actions">
+    <button id="finalCloseBtn"      class="btn primary">Fermer définitivement la salle</button>
+    <button id="backToDashboardBtn" class="btn secondary" onclick="window.location.href='dashboard.html'">Retour au tableau de bord</button>
+  </div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const params       = new URLSearchParams(window.location.search);
+const room         = params.get("room");
+const isHistorical = params.get("historical") === "true";
+const socket       = io();
+
+document.getElementById("roomBadge").textContent = room ? `Salle ${room}` : "—";
+
+if (!room) {
+  document.getElementById("statusBadge").textContent = "Aucune salle fournie";
+}
+
+// ── Méta émotions ────────────────────────────────────────────────────────────
+const EMOTION_META = {
+  happy:     { label: "😊 Heureux",  color: "#f59e0b" },
+  neutral:   { label: "😐 Neutre",   color: "#6b7280" },
+  sad:       { label: "😢 Triste",   color: "#3b82f6" },
+  angry:     { label: "😠 Colère",   color: "#ef4444" },
+  surprised: { label: "😲 Surpris",  color: "#f97316" },
+  fearful:   { label: "😨 Peur",     color: "#8b5cf6" },
+  disgusted: { label: "🤢 Dégoûté",  color: "#22c55e" },
+  surprise:  { label: "😲 Surpris",  color: "#f97316" },
+  fear:      { label: "😨 Peur",     color: "#8b5cf6" },
+  disgust:   { label: "🤢 Dégoûté",  color: "#22c55e" }
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function initialsOf(profile) {
+  const f = (profile.firstName || "")[0] || "";
+  const l = (profile.lastName  || "")[0] || "";
+  return (f + l).toUpperCase() || "?";
+}
+
+function fullName(profile) {
+  return [profile.firstName, profile.lastName].filter(Boolean).join(" ").trim();
+}
+
+// ── Section questionnaire (barres bidirectionnelles) ─────────────────────────
+function buildQuestionnairePanel(categories, scores) {
+  const panel = document.createElement("div");
+
+  const title = document.createElement("div");
+  title.className   = "panel-title";
+  title.textContent = "Questionnaire";
+  panel.appendChild(title);
+
+  const hasAny = categories.some(c => scores[c] !== null && scores[c] !== undefined);
+  if (!hasAny) {
+    const nd = document.createElement("p");
+    nd.className   = "no-data";
+    nd.textContent = "Aucune réponse enregistrée.";
+    panel.appendChild(nd);
+    return panel;
+  }
+
+  categories.forEach(cat => {
+    const value = scores[cat];
+    const row   = document.createElement("div");
+    row.className = "q-bar-row";
+
+    const label = document.createElement("span");
+    label.className   = "q-bar-label";
+    label.textContent = cat;
+    label.title       = cat;
+    row.appendChild(label);
+
+    const track = document.createElement("div");
+    track.className = "q-bar-track";
+
+    const neg = document.createElement("div");
+    neg.className = "q-bar-fill q-bar-neg";
+    const pos = document.createElement("div");
+    pos.className = "q-bar-fill q-bar-pos";
+
+    if (value !== null && value !== undefined) {
+      const clamped = Math.min(2, Math.max(-2, value));
+      const ratio   = (Math.abs(clamped) / 2) * 50;
+      if (clamped < 0) neg.style.width = ratio + "%";
+      else             pos.style.width = ratio + "%";
+    }
+
+    track.appendChild(neg);
+    track.appendChild(pos);
+    row.appendChild(track);
+
+    const val = document.createElement("span");
+    val.className   = "q-bar-value";
+    val.textContent = (value === null || value === undefined) ? "N/A" : value.toFixed(2);
+    row.appendChild(val);
+
+    panel.appendChild(row);
+  });
+
+  return panel;
+}
+
+// ── Section émotions (barres 0–100 %) ────────────────────────────────────────
+function buildEmotionPanel(emotions, dominantEmotion) {
+  const panel = document.createElement("div");
+
+  const title = document.createElement("div");
+  title.className   = "panel-title";
+  title.textContent = "Émotions détectées";
+  panel.appendChild(title);
+
+  const entries = Object.entries(emotions || {});
+  const total   = entries.reduce((s, [, v]) => s + Number(v || 0), 0);
+
+  if (!total) {
+    const nd = document.createElement("p");
+    nd.className   = "no-data";
+    nd.textContent = "Aucune donnée d'émotion enregistrée.";
+    panel.appendChild(nd);
+    return panel;
+  }
+
+  if (dominantEmotion && EMOTION_META[dominantEmotion]) {
+    const pill = document.createElement("div");
+    pill.className = "dominant-pill";
+    pill.innerHTML = `${EMOTION_META[dominantEmotion].label} <span>dominante</span>`;
+    panel.appendChild(pill);
+  }
+
+  entries
+    .sort(([, a], [, b]) => Number(b) - Number(a))
+    .forEach(([key, count]) => {
+      const meta = EMOTION_META[key];
+      if (!meta) return;
+      const pct = Math.round((Number(count) / total) * 100);
+
+      const row = document.createElement("div");
+      row.className = "emo-bar-row";
+      row.innerHTML = `
+        <span class="emo-bar-label">${meta.label}</span>
+        <div class="emo-bar-track">
+          <div class="emo-bar-fill" style="width:${pct}%;background:${meta.color}"></div>
+        </div>
+        <span class="emo-bar-pct">${pct}%</span>
+      `;
+      panel.appendChild(row);
+    });
+
+  return panel;
+}
+
+// ── Rendu principal ───────────────────────────────────────────────────────────
+function renderResults(data) {
+  const container = document.getElementById("results");
+  container.innerHTML = "";
+
+  const categories      = data.categories      || Object.keys(data.overall || {});
+  const overall         = data.overall         || {};
+  const users           = data.users           || {};
+  const overallEmotions = data.overallEmotions || {};
+
+  document.getElementById("statusBadge").textContent =
+    data._historical ? "Résultats historiques" : "Résultats finaux";
+
+  // ── Vue globale ───────────────────────────────────────────────────────────
+  const globalCard = document.createElement("div");
+  globalCard.className = "result-card";
+
+  const globalTitle = document.createElement("div");
+  globalTitle.className   = "card-title";
+  globalTitle.textContent = "Vue globale de la salle";
+  globalCard.appendChild(globalTitle);
+
+  const overviewGrid = document.createElement("div");
+  overviewGrid.className = "overview-grid";
+  overviewGrid.appendChild(buildQuestionnairePanel(categories, overall));
+  overviewGrid.appendChild(buildEmotionPanel(overallEmotions, null));
+  globalCard.appendChild(overviewGrid);
+
+  container.appendChild(globalCard);
+
+  // ── Par participant ───────────────────────────────────────────────────────
+  if (Object.keys(users).length === 0) return;
+
+  const sectionLabel = document.createElement("div");
+  sectionLabel.className   = "section-label";
+  sectionLabel.textContent = "Résultats par participant";
+  container.appendChild(sectionLabel);
+
+  for (const userId in users) {
+    const userData  = users[userId];
+    const profile   = userData.profile || {};
+    const name      = fullName(profile);
+    const initials  = initialsOf(profile);
+
+    const card = document.createElement("div");
+    card.className = "result-card";
+
+    // Header
+    const header = document.createElement("div");
+    header.className = "user-header";
+
+    const avatar = document.createElement("div");
+    avatar.className   = "user-avatar";
+    avatar.textContent = initials;
+    header.appendChild(avatar);
+
+    const info = document.createElement("div");
+    if (name) {
+      const nameEl = document.createElement("div");
+      nameEl.className   = "user-name";
+      nameEl.textContent = name;
+      info.appendChild(nameEl);
+    }
+    if (profile.email) {
+      const emailEl = document.createElement("div");
+      emailEl.className   = "user-email";
+      emailEl.textContent = profile.email;
+      info.appendChild(emailEl);
+    }
+    const idEl = document.createElement("div");
+    idEl.className   = "user-id";
+    idEl.textContent = userId;
+    info.appendChild(idEl);
+
+    header.appendChild(info);
+    card.appendChild(header);
+
+    // Data
+    const dataGrid = document.createElement("div");
+    dataGrid.className = "user-data-grid";
+    dataGrid.appendChild(buildQuestionnairePanel(categories, userData.scores || {}));
+    dataGrid.appendChild(buildEmotionPanel(userData.emotions, userData.dominantEmotion));
+    card.appendChild(dataGrid);
+
+    container.appendChild(card);
+  }
+}
+
+// ── Chargement ────────────────────────────────────────────────────────────────
+if (isHistorical) {
+  const raw = sessionStorage.getItem("historicalResults");
+  if (raw) {
+    const data = JSON.parse(raw);
+    data._historical = true;
+    renderResults(data);
+    document.getElementById("finalCloseBtn").style.display = "none";
+  } else {
+    document.getElementById("statusBadge").textContent = "Résultats introuvables";
+  }
+} else {
+  socket.emit("getResults", room);
+}
+
+socket.on("results", renderResults);
+
+document.getElementById("finalCloseBtn").onclick = () => {
+  socket.emit("deleteRoom", room);
+  window.location.href = "index.html";
+};
+</script>
+
+</body>
+</html>

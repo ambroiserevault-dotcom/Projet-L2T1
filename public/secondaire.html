@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="fr" class="page-secondary">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Participation à la salle</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* ── Panneau webcam/émotions ── */
+    .webcam-panel {
+      margin-top: 24px;
+      border: 2px solid #7a0026;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .webcam-header {
+      background: linear-gradient(135deg, #7a0026, #5f001d);
+      color: white;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .webcam-body {
+      padding: 16px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    #videoBox {
+      flex: 0 0 auto;
+    }
+
+    #video {
+      width: 200px;
+      border-radius: 10px;
+      display: block;
+    }
+
+    .emotion-live-panel {
+      flex: 1;
+      min-width: 180px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* Émotion dominante */
+    .dominant-block {
+      background: #f7f8fb;
+      border-radius: 10px;
+      padding: 12px 14px;
+      text-align: center;
+    }
+
+    .dominant-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #999;
+      margin-bottom: 4px;
+    }
+
+    .dominant-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: #7a0026;
+    }
+
+    /* Barres émotions */
+    .emotion-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .ebar {
+      display: grid;
+      grid-template-columns: 90px 1fr 38px;
+      gap: 6px;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .ebar-label { color: #444; font-weight: 500; }
+
+    .ebar-track {
+      height: 8px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      overflow: hidden;
+    }
+
+    .ebar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #7a0026, #c1003a);
+      transition: width 0.4s ease;
+    }
+
+    .ebar-pct {
+      text-align: right;
+      color: #7a0026;
+      font-weight: 600;
+    }
+
+    /* Indicateurs statut */
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ccc;
+      display: inline-block;
+      margin-right: 6px;
+    }
+    .status-dot.active { background: #3ecf7a; animation: blink 1.5s infinite; }
+    .status-dot.error  { background: #f87171; }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
+    /* Âge estimé */
+    .age-badge {
+      font-size: 12px;
+      color: #666;
+      background: #f1f5f9;
+      border-radius: 20px;
+      padding: 4px 10px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body class="page-secondary">
+
+  <main class="secondary-card">
+    <header>
+      <h1>Salle en activité</h1>
+    </header>
+
+    <section class="quiz-header">
+      <h3>Salle : <span id="roomDisplay"></span></h3>
+      <h3>Votre identifiant : <span id="userId"></span></h3>
+    </section>
+
+    <!-- QUIZ -->
+    <div id="quiz"></div>
+
+    <!-- PANNEAU WEBCAM + ÉMOTIONS (visible seulement si webcam activée) -->
+    <div id="webcamPanel" class="webcam-panel" style="display:none;">
+      <div class="webcam-header">
+        <span>
+          <span class="status-dot" id="statusDot"></span>
+          Détection des émotions
+        </span>
+        <span id="emotionIndicator">En attente…</span>
+      </div>
+      <div class="webcam-body">
+        <!-- Vidéo -->
+        <div id="videoBox">
+          <video id="video" autoplay muted></video>
+          <!-- Canvas utilisé par face-api pour la détection (caché) -->
+          <canvas id="faceOverlay" style="display:none;"></canvas>
+        </div>
+
+        <!-- Panneau émotions -->
+        <div class="emotion-live-panel">
+          <!-- Dominante -->
+          <div class="dominant-block">
+            <div class="dominant-label">Émotion dominante</div>
+            <div class="dominant-value" id="dominantDisplay">—</div>
+            <div id="ageDisplay" class="age-badge" style="display:none;"></div>
+          </div>
+
+          <!-- Barres -->
+          <div class="emotion-bars" id="emotionBars">
+            <!-- générées dynamiquement -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+  <script defer src="script.js"></script>
+  <script>
+    // ── Configuration des émotions ───────────────────────────────────
+    const EMOTION_META = {
+      happy:    { label: "😊 Heureux",   color: "#FFEB3B" },
+      neutral:  { label: "😐 Neutre",    color: "#9E9E9E" },
+      sad:      { label: "😢 Triste",    color: "#2196F3" },
+      angry:    { label: "😠 Colère",    color: "#F44336" },
+      surprise: { label: "😲 Surpris",   color: "#FF9800" },
+      fear:     { label: "😨 Peur",      color: "#673AB7" },
+      disgust:  { label: "🤢 Dégoût",    color: "#4CAF50" }
+    };
+
+    // Construire les barres une fois au chargement
+    const barsContainer = document.getElementById("emotionBars");
+    Object.entries(EMOTION_META).forEach(([key, meta]) => {
+      const row = document.createElement("div");
+      row.className = "ebar";
+      row.innerHTML = `
+        <span class="ebar-label">${meta.label}</span>
+        <div class="ebar-track">
+          <div class="ebar-fill" id="bar-${key}" style="width:0%;background:linear-gradient(90deg,${meta.color},${meta.color}cc)"></div>
+        </div>
+        <span class="ebar-pct" id="pct-${key}">0%</span>
+      `;
+      barsContainer.appendChild(row);
+    });
+
+    // ── Mise à jour des émotions ────────────────────────────────────
+    window.updateEmotionDisplay = function (emotions, age) {
+      const statusDot        = document.getElementById("statusDot");
+      const emotionIndicator = document.getElementById("emotionIndicator");
+      const dominantDisplay  = document.getElementById("dominantDisplay");
+      const ageDisplay       = document.getElementById("ageDisplay");
+
+      if (!emotions || Object.keys(emotions).length === 0) {
+        statusDot.className = "status-dot error";
+        emotionIndicator.textContent = "Aucun visage détecté";
+        return;
+      }
+
+      statusDot.className = "status-dot active";
+
+      const dominant = Object.keys(emotions).reduce(
+        (a, b) => (emotions[a] > emotions[b] ? a : b)
+      );
+      const meta = EMOTION_META[dominant] || { label: dominant };
+      dominantDisplay.textContent = meta.label || dominant;
+      emotionIndicator.textContent = "Détection active";
+
+      const total = Object.values(emotions).reduce((s, v) => s + v, 0) || 1;
+
+      Object.entries(EMOTION_META).forEach(([key]) => {
+        const raw = emotions[key] || 0;
+        const pct = Math.round((raw / total) * 100);
+        const bar   = document.getElementById("bar-"  + key);
+        const pctEl = document.getElementById("pct-"  + key);
+        if (bar)   bar.style.width    = pct + "%";
+        if (pctEl) pctEl.textContent  = pct + "%";
+      });
+
+      if (age !== null && age !== undefined) {
+        ageDisplay.textContent   = `Âge estimé : ${Math.round(age)} ans`;
+        ageDisplay.style.display = "inline-block";
+      }
+    };
+
+    // ── Face-API (détection côté client, même logique que Gloria) ───
+    let faceApiReady      = false;
+    let detectionActive   = false;
+    let detectionInterval = null;
+    let reportInterval    = null;
+
+    // Compteurs cumulés sur toute la session (remis à zéro à chaque démarrage)
+    let emotionStats = {
+      happy: 0, sad: 0, neutral: 0, angry: 0,
+      surprised: 0, fearful: 0, disgusted: 0
+    };
+
+    async function initializeFaceApi() {
+      try {
+        if (typeof faceapi === "undefined") return;
+        const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL)
+        ]);
+        faceApiReady = true;
+        console.log("[FACE-API] Modèles chargés ✓");
+      } catch (e) {
+        console.error("[FACE-API] Erreur chargement modèles:", e);
+      }
+    }
+
+    function getDominantEmotion() {
+      return Object.entries(emotionStats).reduce(
+        (best, cur) => (cur[1] > best[1] ? cur : best),
+        ["neutral", 0]
+      )[0];
+    }
+
+    function reportEmotionsToServer() {
+      if (!window.socket || !window.currentRoom || !window.currentUserId) return;
+      const total = Object.values(emotionStats).reduce((a, b) => a + b, 0);
+      if (!total) return;
+
+      window.socket.emit("reportEmotions", {
+        room:           window.currentRoom,
+        userId:         window.currentUserId,
+        emotionStats:   { ...emotionStats },
+        dominantEmotion: getDominantEmotion()
+      });
+    }
+
+    async function startFaceApiDetection() {
+      // Attendre jusqu'à 5 s que les modèles soient prêts
+      let waited = 0;
+      while (!faceApiReady && waited < 10) {
+        await new Promise(r => setTimeout(r, 500));
+        waited++;
+      }
+      if (!faceApiReady) {
+        console.warn("[FACE-API] Modèles non disponibles, détection annulée.");
+        return;
+      }
+
+      // Réinitialiser les compteurs pour une nouvelle session
+      emotionStats = { happy: 0, sad: 0, neutral: 0, angry: 0, surprised: 0, fearful: 0, disgusted: 0 };
+
+      detectionActive   = true;
+      detectionInterval = setInterval(detectFaceEmotions, 300);
+
+      // Envoyer les stats accumulées au serveur toutes les 5 secondes
+      reportInterval = setInterval(reportEmotionsToServer, 5000);
+
+      console.log("[FACE-API] Détection démarrée ✓");
+    }
+
+    async function detectFaceEmotions() {
+      if (!detectionActive) return;
+
+      const video  = document.getElementById("video");
+      const canvas = document.getElementById("faceOverlay");
+      if (!canvas || !video || video.videoWidth === 0 || video.videoHeight === 0) return;
+
+      try {
+        const ctx = canvas.getContext("2d");
+        canvas.width  = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const detections = await faceapi
+          .detectAllFaces(canvas, new faceapi.TinyFaceDetectorOptions())
+          .withFaceExpressions();
+
+        if (!detections || detections.length === 0) {
+          window.updateEmotionDisplay({}, null);
+          return;
+        }
+
+        const detection   = detections[0];
+        const expressions = detection.expressions;
+
+        // Émotion dominante de ce frame
+        let maxEmotion = "neutral";
+        let maxConf    = 0;
+        Object.entries(expressions).forEach(([e, c]) => {
+          if (c > maxConf) { maxConf = c; maxEmotion = e; }
+        });
+
+        // Accumuler dans les compteurs de session
+        if (emotionStats.hasOwnProperty(maxEmotion)) {
+          emotionStats[maxEmotion]++;
+        }
+
+        // Mettre à jour les barres (affichage live basé sur les cumuls)
+        const total = Object.values(emotionStats).reduce((a, b) => a + b, 0) || 1;
+        const asPercentages = {};
+        Object.entries(emotionStats).forEach(([k, v]) => { asPercentages[k] = v / total; });
+        window.updateEmotionDisplay(asPercentages, null);
+
+        // Dessiner le rectangle de détection sur le canvas caché
+        ctx.strokeStyle = "#4ade80";
+        ctx.lineWidth   = 3;
+        const { x, y, width, height } = detection.detection.box;
+        ctx.strokeRect(x, y, width, height);
+        ctx.fillStyle = "#4ade80";
+        ctx.font      = "bold 14px Arial";
+        ctx.fillText(maxEmotion.toUpperCase(), x, Math.max(y - 8, 14));
+
+      } catch (e) {
+        if (e.message && !e.message.includes("width") && !e.message.includes("height")) {
+          console.error("[FACE-API]", e);
+        }
+      }
+    }
+
+    // Afficher le panneau webcam et lancer la détection face-api
+    window.showWebcamPanel = function () {
+      document.getElementById("webcamPanel").style.display = "block";
+      setTimeout(startFaceApiDetection, 800);
+    };
+
+    // Arrêter proprement la détection (appelé par stopWebcam dans script.js)
+    window.stopFaceApiDetection = function () {
+      detectionActive = false;
+      clearInterval(detectionInterval);
+      clearInterval(reportInterval);
+      // Envoyer un dernier rapport final
+      reportEmotionsToServer();
+    };
+
+    window.addEventListener("load", initializeFaceApi);
+  </script>
+
+</body>
+</html>
