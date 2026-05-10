@@ -32,4 +32,20 @@ document.addEventListener("DOMContentLoaded", function () {
     if (code) voirSalleBtn.href = "salle.html?room=" + code;
   }
 
+  // ===== BOUTON ENVOYER UN MAIL =====
+  const mailBtn = document.getElementById("mailBtn");
+  if (mailBtn) {
+    const stored = localStorage.getItem("adminUser");
+    const admin  = stored ? JSON.parse(stored) : null;
+    const email  = admin ? admin.email : "";
+    const code   = roomCode ? roomCode.innerText.trim() : "";
+
+    const subject = encodeURIComponent(`Code de la salle : ${code}`);
+    const body    = encodeURIComponent(
+      `Bonjour,\n\nVous pouvez rejoindre la salle en utilisant le code suivant :\n\n${code}\n\nRendez-vous sur l'application et entrez ce code pour participer.\n\nCordialement`
+    );
+
+    mailBtn.href = `mailto:${email}?subject=${subject}&body=${body}`;
+  }
+
 });
