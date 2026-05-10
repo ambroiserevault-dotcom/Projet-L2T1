@@ -263,6 +263,12 @@
   .btn.secondary { background: #ebebf2; color: #1e1e2f; }
   .btn.secondary:hover { background: #dcdce8; }
 
+  /* ── Circular chart wrapper ─────────────────────────────────── */
+  .chart-circle-wrapper {
+    max-width: 260px;
+    margin: 8px auto 0;
+  }
+
   /* ── Timeline charts ─────────────────────────────────────────── */
   .timeline-card canvas { display: block; max-height: 260px; }
   .timeline-note {
@@ -347,7 +353,7 @@ function fullName(profile) {
   return [profile.firstName, profile.lastName].filter(Boolean).join(" ").trim();
 }
 
-// ── Section questionnaire (barres bidirectionnelles) ─────────────────────────
+// ── Section questionnaire (radar) ────────────────────────────────────────────
 function buildQuestionnairePanel(categories, scores) {
   const panel = document.createElement("div");
 
@@ -365,48 +371,47 @@ function buildQuestionnairePanel(categories, scores) {
     return panel;
   }
 
-  categories.forEach(cat => {
-    const value = scores[cat];
-    const row   = document.createElement("div");
-    row.className = "q-bar-row";
+  const wrapper = document.createElement("div");
+  wrapper.className = "chart-circle-wrapper";
+  const canvas = document.createElement("canvas");
+  wrapper.appendChild(canvas);
+  panel.appendChild(wrapper);
 
-    const label = document.createElement("span");
-    label.className   = "q-bar-label";
-    label.textContent = cat;
-    label.title       = cat;
-    row.appendChild(label);
-
-    const track = document.createElement("div");
-    track.className = "q-bar-track";
-
-    const neg = document.createElement("div");
-    neg.className = "q-bar-fill q-bar-neg";
-    const pos = document.createElement("div");
-    pos.className = "q-bar-fill q-bar-pos";
-
-    if (value !== null && value !== undefined) {
-      const clamped = Math.min(2, Math.max(-2, value));
-      const ratio   = (Math.abs(clamped) / 2) * 50;
-      if (clamped < 0) neg.style.width = ratio + "%";
-      else             pos.style.width = ratio + "%";
+  new Chart(canvas, {
+    type: "radar",
+    data: {
+      labels: categories,
+      datasets: [{
+        label:               "Score",
+        data:                categories.map(cat => { const v = scores[cat]; return (v !== null && v !== undefined) ? v : 0; }),
+        backgroundColor:     "rgba(122, 0, 38, 0.12)",
+        borderColor:         "#7a0026",
+        borderWidth:         2,
+        pointBackgroundColor: "#7a0026",
+        pointRadius:         4,
+        pointHoverRadius:    6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        r: {
+          min: -2, max: 2,
+          ticks: { stepSize: 1, font: { size: 10 }, backdropColor: "transparent" },
+          pointLabels: { font: { size: 11 }, color: "#444" },
+          grid:        { color: "rgba(0,0,0,0.08)" },
+          angleLines:  { color: "rgba(0,0,0,0.08)" }
+        }
+      }
     }
-
-    track.appendChild(neg);
-    track.appendChild(pos);
-    row.appendChild(track);
-
-    const val = document.createElement("span");
-    val.className   = "q-bar-value";
-    val.textContent = (value === null || value === undefined) ? "N/A" : value.toFixed(2);
-    row.appendChild(val);
-
-    panel.appendChild(row);
   });
 
   return panel;
 }
 
-// ── Section émotions (barres 0–100 %) ────────────────────────────────────────
+// ── Section émotions (donut) ─────────────────────────────────────────────────
 function buildEmotionPanel(emotions, dominantEmotion) {
   const panel = document.createElement("div");
 
@@ -433,24 +438,37 @@ function buildEmotionPanel(emotions, dominantEmotion) {
     panel.appendChild(pill);
   }
 
-  entries
-    .sort(([, a], [, b]) => Number(b) - Number(a))
-    .forEach(([key, count]) => {
-      const meta = EMOTION_META[key];
-      if (!meta) return;
-      const pct = Math.round((Number(count) / total) * 100);
+  const wrapper = document.createElement("div");
+  wrapper.className = "chart-circle-wrapper";
+  const canvas = document.createElement("canvas");
+  wrapper.appendChild(canvas);
+  panel.appendChild(wrapper);
 
-      const row = document.createElement("div");
-      row.className = "emo-bar-row";
-      row.innerHTML = `
-        <span class="emo-bar-label">${meta.label}</span>
-        <div class="emo-bar-track">
-          <div class="emo-bar-fill" style="width:${pct}%;background:${meta.color}"></div>
-        </div>
-        <span class="emo-bar-pct">${pct}%</span>
-      `;
-      panel.appendChild(row);
-    });
+  const valid = entries
+    .filter(([key]) => EMOTION_META[key] && Number(emotions[key]) > 0)
+    .sort(([, a], [, b]) => Number(b) - Number(a));
+
+  new Chart(canvas, {
+    type: "doughnut",
+    data: {
+      labels:   valid.map(([key]) => EMOTION_META[key].label),
+      datasets: [{
+        data:            valid.map(([, v]) => Math.round((Number(v) / total) * 100)),
+        backgroundColor: valid.map(([key]) => EMOTION_META[key].color),
+        borderWidth:     2,
+        borderColor:     "#fff"
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      cutout: "58%",
+      plugins: {
+        legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 }, padding: 8 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}%` } }
+      }
+    }
+  });
 
   return panel;
 }
