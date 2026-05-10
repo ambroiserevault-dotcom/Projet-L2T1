@@ -642,12 +642,12 @@ body.page-results {
 
 .page-results .bar-fill-left {
   right: 50%;
-  background: linear-gradient(90deg, #ff9e9e, #f76b6b);
+  background: linear-gradient(90deg, #4d9cff, #1c6df6);
 }
 
 .page-results .bar-fill-right {
   left: 50%;
-  background: linear-gradient(90deg, #4d9cff, #1c6df6);
+  background: linear-gradient(90deg, #ff9e9e, #f76b6b);
 }
 
 .page-results .bar-value {

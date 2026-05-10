@@ -122,8 +122,8 @@
     top: 0; bottom: 0;
     width: 0;
   }
-  .q-bar-neg { right: 50%; background: linear-gradient(90deg, #ff9e9e, #f76b6b); border-radius: 999px 0 0 999px; }
-  .q-bar-pos { left:  50%; background: linear-gradient(90deg, #4d9cff, #1c6df6); border-radius: 0 999px 999px 0; }
+  .q-bar-neg { right: 50%; background: linear-gradient(90deg, #4d9cff, #1c6df6); border-radius: 999px 0 0 999px; }
+  .q-bar-pos { left:  50%; background: linear-gradient(90deg, #ff9e9e, #f76b6b); border-radius: 0 999px 999px 0; }
   .q-bar-value { text-align: right; font-weight: 600; color: #333; font-size: 12px; }
 
   /* ── Emotion bars ───────────────────────────────────────────── */
@@ -216,6 +216,24 @@
   @media (max-width: 620px) {
     .user-data-grid { grid-template-columns: 1fr; }
   }
+
+  /* ── Section header row (label + copy button) ──────────────── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 32px 0 16px;
+    flex-wrap: wrap;
+  }
+  .section-header .section-label { margin: 0; }
+  .copy-feedback {
+    font-size: 13px;
+    color: #7a0026;
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity .2s ease;
+  }
+  .copy-feedback.visible { opacity: 1; }
 
   /* ── Action buttons ─────────────────────────────────────────── */
   .results-actions {
@@ -449,10 +467,46 @@ function renderResults(data) {
   // ── Par participant ───────────────────────────────────────────────────────
   if (Object.keys(users).length === 0) return;
 
+  const emails = Object.values(users)
+    .map(u => (u.profile || {}).email)
+    .filter(Boolean);
+
+  const sectionHeader = document.createElement("div");
+  sectionHeader.className = "section-header";
+
   const sectionLabel = document.createElement("div");
   sectionLabel.className   = "section-label";
   sectionLabel.textContent = "Résultats par participant";
-  container.appendChild(sectionLabel);
+  sectionHeader.appendChild(sectionLabel);
+
+  if (emails.length > 0) {
+    const copyBtn = document.createElement("button");
+    copyBtn.className   = "btn secondary";
+    copyBtn.textContent = "📋 Copier les emails";
+    copyBtn.style.padding = "8px 16px";
+    copyBtn.style.fontSize = "13px";
+
+    const feedback = document.createElement("span");
+    feedback.className = "copy-feedback";
+    feedback.textContent = "Emails copiés ✓";
+
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(emails.join("; "))
+        .then(() => {
+          feedback.classList.add("visible");
+          setTimeout(() => feedback.classList.remove("visible"), 2500);
+        })
+        .catch(() => {
+          feedback.textContent = emails.join("; ");
+          feedback.classList.add("visible");
+        });
+    };
+
+    sectionHeader.appendChild(copyBtn);
+    sectionHeader.appendChild(feedback);
+  }
+
+  container.appendChild(sectionHeader);
 
   for (const userId in users) {
     const userData  = users[userId];
