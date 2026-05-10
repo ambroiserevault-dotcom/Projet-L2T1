@@ -694,3 +694,68 @@ body.page-results {
   justify-content: center;
   flex-wrap: wrap;
 }
+
+
+/* ===================== PAGE DÉCONNECTÉ ===================== */
+.page-disconnected * {
+  box-sizing: border-box;
+  font-family: "Segoe UI", sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+.page-disconnected body {
+  min-height: 100vh;
+  background: #f6eaf5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.page-disconnected .card {
+  background: white;
+  border-radius: 20px;
+  padding: 48px 40px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.page-disconnected .icon {
+  font-size: 56px;
+  margin-bottom: 20px;
+  display: block;
+}
+
+.page-disconnected h1 {
+  font-size: 1.6rem;
+  color: #7a0026;
+  margin-bottom: 12px;
+}
+
+.page-disconnected p {
+  color: #555;
+  font-size: 1rem;
+  line-height: 1.5;
+  margin-bottom: 32px;
+}
+
+.page-disconnected .btn {
+  display: inline-block;
+  padding: 14px 28px;
+  background: #7a0026;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.page-disconnected .btn:hover {
+  background: #5f001d;
+}
