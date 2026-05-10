@@ -352,7 +352,6 @@ socket.on("questions", (questions) => {
     card.className = "quiz-question-card";
     card.innerHTML = `
       <div class="quiz-question-header">
-        <span class="quiz-category-badge">${q.category}</span>
         <span class="quiz-question-number">${index + 1} / ${questions.length}</span>
       </div>
       <p class="quiz-question-text">${q.libelle}</p>
