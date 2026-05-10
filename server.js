@@ -174,7 +174,9 @@ io.on("connection", (socket) => {
       currentQuestions: [],
       closed: false,
       adminEmail,
-      createdAt
+      createdAt,
+      emotionTimeline: [],
+      questionnaireTimeline: []
     };
 
     socket.join(room);
@@ -319,6 +321,11 @@ io.on("connection", (socket) => {
     });
 
     console.log("Room:", room, "| User:", userId, "| Réponses stockées");
+
+    // Snapshot room-wide questionnaire scores after each answer batch
+    rooms[room].questionnaireTimeline = rooms[room].questionnaireTimeline || [];
+    rooms[room].questionnaireTimeline.push({ t: Date.now(), scores: computeRoomOverview(room) });
+
     io.to(room).emit("roomUpdate", buildRoomSnapshot(room));
   });
 
@@ -329,6 +336,22 @@ io.on("connection", (socket) => {
 
     rooms[room].answers[userId].emotions        = emotionStats    || {};
     rooms[room].answers[userId].dominantEmotion = dominantEmotion || "neutral";
+
+    // Snapshot room-wide emotion percentages at most every 15 seconds
+    const tl = rooms[room].emotionTimeline;
+    const now = Date.now();
+    if (tl.length === 0 || now - tl[tl.length - 1].t >= 15000) {
+      const roomEmotions = {};
+      for (const uid in rooms[room].answers) {
+        for (const [e, c] of Object.entries(rooms[room].answers[uid].emotions || {})) {
+          roomEmotions[e] = (roomEmotions[e] || 0) + Number(c || 0);
+        }
+      }
+      const eTotal = Object.values(roomEmotions).reduce((a, b) => a + b, 0) || 1;
+      const pct = {};
+      for (const [e, c] of Object.entries(roomEmotions)) pct[e] = Math.round((c / eTotal) * 1000) / 10;
+      tl.push({ t: now, emotions: pct });
+    }
 
     io.to(room).emit("roomUpdate", buildRoomSnapshot(room));
   });
@@ -460,10 +483,12 @@ io.on("connection", (socket) => {
 
     return {
       room,
-      categories:      getCategoryList(),
+      categories:            getCategoryList(),
       users,
-      overall:         computeRoomOverview(room),
-      overallEmotions
+      overall:               computeRoomOverview(room),
+      overallEmotions,
+      emotionTimeline:       rooms[room].emotionTimeline       || [],
+      questionnaireTimeline: rooms[room].questionnaireTimeline || []
     };
   }
 

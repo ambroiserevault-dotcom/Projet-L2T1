@@ -333,6 +333,14 @@ function startCapturingFrames(video) {
 
 // ── Quiz ──────────────────────────────────────────────────────────────────────
 
+const QUIZ_OPTIONS = [
+  { value: "a", label: "Pas du tout" },
+  { value: "b", label: "Peu d'accord" },
+  { value: "c", label: "Neutre" },
+  { value: "d", label: "D'accord" },
+  { value: "e", label: "Tout à fait" }
+];
+
 socket.on("questions", (questions) => {
   const quizDiv = document.getElementById("quiz");
   if (!quizDiv) return;
@@ -340,25 +348,33 @@ socket.on("questions", (questions) => {
   quizDiv.innerHTML = "";
 
   questions.forEach((q, index) => {
-    const div = document.createElement("div");
-    div.innerHTML = `
-      <p>${q.libelle}</p>
-      <label><input type="radio" name="q${index}" value="a"> Pas du tout d'accord</label>
-      <label><input type="radio" name="q${index}" value="b"> Peu d'accord</label>
-      <label><input type="radio" name="q${index}" value="c"> Neutre</label>
-      <label><input type="radio" name="q${index}" value="d"> Plutôt d'accord</label>
-      <label><input type="radio" name="q${index}" value="e"> Tout à fait d'accord</label>
+    const card = document.createElement("div");
+    card.className = "quiz-question-card";
+    card.innerHTML = `
+      <div class="quiz-question-header">
+        <span class="quiz-category-badge">${q.category}</span>
+        <span class="quiz-question-number">${index + 1} / ${questions.length}</span>
+      </div>
+      <p class="quiz-question-text">${q.libelle}</p>
+      <div class="quiz-options">
+        ${QUIZ_OPTIONS.map(opt => `
+          <label class="quiz-option-label">
+            <input type="radio" name="q${index}" value="${opt.value}">
+            <span>${opt.label}</span>
+          </label>
+        `).join("")}
+      </div>
     `;
-    quizDiv.appendChild(div);
+    quizDiv.appendChild(card);
   });
 
   const btn = document.createElement("button");
-  btn.innerText  = "Envoyer mes réponses";
-  btn.className  = "secondary-submit-btn";
+  btn.innerText = "Envoyer mes réponses";
+  btn.className = "secondary-submit-btn";
 
   btn.onclick = () => {
-    const answers      = [];
-    let   allAnswered  = true;
+    const answers     = [];
+    let   allAnswered = true;
 
     questions.forEach((_, i) => {
       const selected = document.querySelector(`input[name="q${i}"]:checked`);
@@ -369,7 +385,12 @@ socket.on("questions", (questions) => {
     if (!allAnswered) { alert("Veuillez répondre à toutes les questions avant de valider."); return; }
 
     socket.emit("answers", { room: currentRoom, userId: currentUserId, answers });
-    quizDiv.innerHTML = "<h3>✅ Réponses envoyées. Merci !</h3>";
+    quizDiv.innerHTML = `
+      <div class="quiz-success">
+        <div class="quiz-success-icon">✅</div>
+        <p>Réponses envoyées. Merci !</p>
+      </div>
+    `;
   };
 
   quizDiv.appendChild(btn);

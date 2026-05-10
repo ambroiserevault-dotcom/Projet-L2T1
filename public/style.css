@@ -582,6 +582,95 @@ body.page-results {
   transform: translateY(-1px);
 }
 
+/* ── Quiz questions ── */
+.page-secondary .quiz-question-card {
+  background: #fff;
+  border: 1.5px solid #ede8f0;
+  border-radius: 14px;
+  padding: 20px 22px;
+  margin-bottom: 14px;
+}
+
+.page-secondary .quiz-question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.page-secondary .quiz-category-badge {
+  background: #f6eaf5;
+  color: #7a0026;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.page-secondary .quiz-question-number {
+  font-size: 12px;
+  color: #bbb;
+}
+
+.page-secondary .quiz-question-text {
+  font-size: 0.97rem;
+  color: #1e1e2f;
+  font-weight: 500;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.page-secondary .quiz-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.page-secondary .quiz-option-label {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.page-secondary .quiz-option-label input { display: none; }
+
+.page-secondary .quiz-option-label span {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1.5px solid #ddd;
+  font-size: 13px;
+  color: #444;
+  background: #fafafa;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  user-select: none;
+}
+
+.page-secondary .quiz-option-label:hover span {
+  border-color: #b05070;
+  background: #fdf5f8;
+  color: #7a0026;
+}
+
+.page-secondary .quiz-option-label:has(input:checked) span {
+  background: #7a0026;
+  border-color: #7a0026;
+  color: #fff;
+  font-weight: 600;
+}
+
+.page-secondary .quiz-success {
+  text-align: center;
+  padding: 32px 20px;
+  color: #444;
+}
+
+.page-secondary .quiz-success-icon {
+  font-size: 42px;
+  margin-bottom: 12px;
+}
+
 .page-results {
   padding: 24px;
   max-width: 960px;

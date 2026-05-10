@@ -262,6 +262,15 @@
   .btn.primary:hover { background: #5f001d; }
   .btn.secondary { background: #ebebf2; color: #1e1e2f; }
   .btn.secondary:hover { background: #dcdce8; }
+
+  /* ── Timeline charts ─────────────────────────────────────────── */
+  .timeline-card canvas { display: block; max-height: 260px; }
+  .timeline-note {
+    font-size: 12px;
+    color: #aaa;
+    font-style: italic;
+    margin-top: 10px;
+  }
 </style>
 </head>
 
@@ -289,6 +298,7 @@
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 const params       = new URLSearchParams(window.location.search);
 const room         = params.get("room");
@@ -300,6 +310,17 @@ document.getElementById("roomBadge").textContent = room ? `Salle ${room}` : "—
 if (!room) {
   document.getElementById("statusBadge").textContent = "Aucune salle fournie";
 }
+
+// ── Couleurs catégories questionnaire ────────────────────────────────────────
+const CATEGORY_COLORS = {
+  "stress":        "#ef4444",
+  "fatigue":       "#f97316",
+  "confiance":     "#22c55e",
+  "motivation":    "#3b82f6",
+  "concentration": "#8b5cf6",
+  "anxiété":       "#ec4899",
+  "bien-etre":     "#14b8a6"
+};
 
 // ── Méta émotions ────────────────────────────────────────────────────────────
 const EMOTION_META = {
@@ -434,6 +455,126 @@ function buildEmotionPanel(emotions, dominantEmotion) {
   return panel;
 }
 
+// ── Timeline émotions ────────────────────────────────────────────────────────
+function buildEmotionTimelineCard(emotionTimeline) {
+  const card = document.createElement("div");
+  card.className = "result-card timeline-card";
+
+  const title = document.createElement("div");
+  title.className   = "card-title";
+  title.textContent = "Évolution des émotions — salle entière (webcam)";
+  card.appendChild(title);
+
+  if (!emotionTimeline || emotionTimeline.length < 2) {
+    const nd = document.createElement("p");
+    nd.className   = "no-data";
+    nd.textContent = "Données insuffisantes pour afficher l'évolution (au moins 2 points nécessaires).";
+    card.appendChild(nd);
+    return card;
+  }
+
+  const canvas = document.createElement("canvas");
+  card.appendChild(canvas);
+
+  const t0     = emotionTimeline[0].t;
+  const labels = emotionTimeline.map(e => {
+    const secs = Math.round((e.t - t0) / 1000);
+    return secs < 60 ? `${secs}s` : `${(secs / 60).toFixed(1)} min`;
+  });
+
+  const datasets = Object.entries(EMOTION_META)
+    .filter(([key]) => !["surprise", "fear", "disgust"].includes(key))
+    .map(([key, meta]) => ({
+      label:           meta.label,
+      data:            emotionTimeline.map(e => e.emotions[key] || 0),
+      borderColor:     meta.color,
+      backgroundColor: meta.color + "33",
+      borderWidth:     2,
+      pointRadius:     3,
+      tension:         0.35,
+      fill:            false
+    }))
+    .filter(ds => ds.data.some(v => v > 0));
+
+  new Chart(canvas, {
+    type: "line",
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 12 } } } },
+      scales: {
+        y: { min: 0, max: 100, ticks: { callback: v => v + "%" }, title: { display: true, text: "Part (%)" } },
+        x: { title: { display: true, text: "Temps écoulé" } }
+      }
+    }
+  });
+
+  const note = document.createElement("p");
+  note.className   = "timeline-note";
+  note.textContent = `${emotionTimeline.length} points de mesure enregistrés.`;
+  card.appendChild(note);
+
+  return card;
+}
+
+// ── Timeline questionnaire ────────────────────────────────────────────────────
+function buildQuestionnaireTimelineCard(questionnaireTimeline, categories) {
+  const card = document.createElement("div");
+  card.className = "result-card timeline-card";
+
+  const title = document.createElement("div");
+  title.className   = "card-title";
+  title.textContent = "Évolution des scores — salle entière (questionnaire)";
+  card.appendChild(title);
+
+  if (!questionnaireTimeline || questionnaireTimeline.length < 2) {
+    const nd = document.createElement("p");
+    nd.className   = "no-data";
+    nd.textContent = "Données insuffisantes pour afficher l'évolution (au moins 2 envois de questions nécessaires).";
+    card.appendChild(nd);
+    return card;
+  }
+
+  const canvas = document.createElement("canvas");
+  card.appendChild(canvas);
+
+  const labels   = questionnaireTimeline.map((_, i) => `Envoi ${i + 1}`);
+  const datasets = categories.map(cat => ({
+    label:           cat,
+    data:            questionnaireTimeline.map(e => e.scores[cat] ?? null),
+    borderColor:     CATEGORY_COLORS[cat] || "#7a0026",
+    backgroundColor: (CATEGORY_COLORS[cat] || "#7a0026") + "33",
+    borderWidth:     2,
+    pointRadius:     4,
+    tension:         0.35,
+    fill:            false,
+    spanGaps:        true
+  })).filter(ds => ds.data.some(v => v !== null));
+
+  new Chart(canvas, {
+    type: "line",
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 12 } } } },
+      scales: {
+        y: {
+          min: -2, max: 2,
+          ticks: { stepSize: 0.5 },
+          title: { display: true, text: "Score moyen" }
+        }
+      }
+    }
+  });
+
+  const note = document.createElement("p");
+  note.className   = "timeline-note";
+  note.textContent = `${questionnaireTimeline.length} envoi(s) de questions enregistré(s).`;
+  card.appendChild(note);
+
+  return card;
+}
+
 // ── Rendu principal ───────────────────────────────────────────────────────────
 function renderResults(data) {
   const container = document.getElementById("results");
@@ -463,6 +604,10 @@ function renderResults(data) {
   globalCard.appendChild(overviewGrid);
 
   container.appendChild(globalCard);
+
+  // ── Timelines (salle entière) ─────────────────────────────────────────────
+  container.appendChild(buildEmotionTimelineCard(data.emotionTimeline || []));
+  container.appendChild(buildQuestionnaireTimelineCard(data.questionnaireTimeline || [], categories));
 
   // ── Par participant ───────────────────────────────────────────────────────
   if (Object.keys(users).length === 0) return;
